@@ -1,0 +1,8 @@
+React JS utilizes the Modal Component as a solid foundation for creating dialogs, lightboxes, popovers, etc. 
+The modal component represents a dialogue box that contains some information, opens when the button is clicked, 
+and closes when clicked outside.
+
+Example: 
+1/ when user want to leave our site, we can show a modal to confirm whether user wants to leave our site or not.
+2/ After use pays our bill, we can display a modal to inform that "Payment successful", 
+or in case insufficient money, can display Error modal "Unable to process payment: low card balance"

@@ -1,0 +1,67 @@
+Background:
+
+One-to-One pattern: like RabbitMQ, produce message in one side and consume in other side.
+We have one system, create message, add them to the queue, and then consume take that message.
+Just like how queue data structure works.
+
+PubSub Pattern: We have Publishers and Subscribers, there're part of our application.
+For example, we have Publishers are our servers to process payment transaction.
+So every time our system receives a payment, it sends to our PubSub message Queue system.
+These Topic are entity, in this case are payments, will be store in persistent storage like database, so we won't lose them.
+And the Subscribers will be listening to the Topic, and Subscribers are actually the one who process the payment.
+
+In reality, PubSub are decoupling from our system, and the Publishers don't even know about the Subscribers.
+And we can have Topic 1 store payment infor while Topic 2 stores Fraud detection infor while Topic 3 stores log infor.
+So this design also allow for scaling.
+
+Terminology: 
+Producers  -------------> Consumers
+Publishers -------------> Subscribers
+
+Functional Requirements: 
+1/ Fan-out: we want our messages to be able to received by multiple Subscribers(aka Consumers)
+2/ Retain messages until delivered
+3/ At least once delivery: we want every message received by our PubSub system deliver at least once.
+Because if we can't guarantee that, some of our message maybe lost. And we don't want that situation.
+4/ Exactly one(Optional): we want every message to be delivered exactly once, so we won't end up with duplicate messages.
+For example: we want every payment to be delivered exact once.
+
+Non-Functional Requirements:
+1/ Scalability: we want our system be able to scale horizontally. That means if we add more and more Publishers/ Subscribers,
+we can handle more traffic, or more messages at the same time
+2/ Persistent storage: we need to store messages in persistent storage like database, so we won't be lost them
+3/ Throughput: our system need to be able to process large amount of messages
+
+High Level Design:
+Publishers create messages and send them into our PubSub system. Those messages will be received by our Publish Forwarders.
+Depend on the amount of messages sent, we may need to scale Publish Forwarders. 
+The important thing is: the same message from Publish Forwarder may be sent to multiple Subscriber Forwarders, and the same message in 
+Subscriber Forwarder may be sent to multiple Subscribers. So we need to scale Subscriber Forwarders/ Subscribers more than
+Publish Forwarders/ Publishers. But we may have the opposite case.
+
+Publish Forwarders will store messages at database, and then sent signal back to Publishers to inform that messages has been stored successfully.
+
+Once those messages are stored, Subscriber Forwarders can read that data and send it their relevant Subscribers.
+Once Subscribers seen a message, they will send an acknowledgement back to the PubSub system.
+
+And once a particular message has been read by ALL of the Subscribers, then we probably don't need to store that message anymore.
+So we can remove that message from our database
+
+Details Design:
+Fan-out messages mechanism:
+Topic: is a way to organize our messages
+Subscription: is used to fan-out messages from Topic
+For example: we have 2 messages belong to Payment Topic, so we need to create 2 Subscriptions.
+And each Subscriber listen to a single Subscription
+
+All Subscription infor will be stored in MetaData database: which Topic/ Subs exists.
+For example, when we acknowledge that both messages in Payment Topic has been received, we can safety delete them in Message database
+
+FIFO: we want the messages that receive from Publishers to be stored in the same order in Message database 
+and deliver to Subscribers also in that order.
+So we can create id-timestamp to store in database and send them ordered by that id-timestamp
+
+NoSQL because we don't need complex join
+
+Replication of Message database: Latency vs Fault tolerant: we need to wait until messages has been saved into NUMBER(we can configure this) Replica of database
+before send acknowledgement to Publishers that we already store messages successfully
